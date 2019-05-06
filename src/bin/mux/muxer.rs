@@ -8,11 +8,10 @@
 // PATENTS file, you can obtain it at www.aomedia.org/license/patent.
 
 use crate::decoder::VideoDetails;
+use rav1e::*;
+use std::io;
 use std::io::Write;
 use std::slice;
-use rav1e::*;
-
-pub use ivf::*;
 
 pub fn write_y4m_frame<T: Pixel>(y4m_enc: &mut y4m::Encoder<'_, Box<dyn Write>>, rec: &rav1e::Frame<T>, y4m_details: VideoDetails) {
   let pitch_y = if y4m_details.bit_depth > 8 { y4m_details.width * 2 } else { y4m_details.width };
@@ -91,4 +90,15 @@ pub fn write_y4m_frame<T: Pixel>(y4m_enc: &mut y4m::Encoder<'_, Box<dyn Write>>,
 
   let rec_frame = y4m::Frame::new([&rec_y, &rec_u, &rec_v], None);
   y4m_enc.write_frame(&rec_frame).unwrap();
+}
+
+pub trait Muxer {
+  fn write_header(
+    &mut self, width: usize, height: usize, framerate_num: usize,
+    framerate_den: usize
+  );
+
+  fn write_frame(&mut self, pts: u64, data: &[u8]);
+
+  fn flush(&mut self) -> io::Result<()>;
 }

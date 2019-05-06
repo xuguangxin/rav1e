@@ -7,16 +7,13 @@
 // Media Patent License 1.0 was not distributed with this source code in the
 // PATENTS file, you can obtain it at www.aomedia.org/license/patent.
 
-use y4m;
-
 #[macro_use]
 extern crate scan_fmt;
 
 mod common;
 mod decoder;
-mod muxer;
+mod mux;
 use crate::common::*;
-use crate::muxer::*;
 use rav1e::*;
 
 use std::io;
@@ -26,6 +23,7 @@ use std::path::Path;
 use std::sync::Arc;
 use crate::decoder::Decoder;
 use crate::decoder::VideoDetails;
+use crate::mux::*;
 use std::fs::File;
 use std::io::BufWriter;
 
@@ -60,18 +58,19 @@ impl<D: Decoder> Source<D> {
 // Encode and write a frame.
 // Returns frame information in a `Result`.
 fn process_frame<T: Pixel, D: Decoder>(
-  ctx: &mut Context<T>,
-  output_file: &mut dyn Write,
+  ctx: &mut Context<T>, output_file: &mut dyn Muxer,
   source: &mut Source<D>,
-  mut y4m_enc: Option<&mut y4m::Encoder<'_, Box<dyn Write>>>,
+  mut y4m_enc: Option<&mut y4m::Encoder<'_, Box<dyn Write>>>
 ) -> Option<Vec<FrameSummary>> {
   let y4m_details = source.input.get_video_details();
   let mut frame_summaries = Vec::new();
   let pkt_wrapped = ctx.receive_packet();
   match pkt_wrapped {
     Ok(pkt) => {
-      write_ivf_frame(output_file, pkt.number as u64, pkt.data.as_ref());
-      if let (Some(ref mut y4m_enc_uw), Some(ref rec)) = (y4m_enc.as_mut(), &pkt.rec) {
+      output_file.write_frame(pkt.number as u64, pkt.data.as_ref());
+      if let (Some(ref mut y4m_enc_uw), Some(ref rec)) =
+        (y4m_enc.as_mut(), &pkt.rec)
+      {
         write_y4m_frame(y4m_enc_uw, rec, y4m_details);
       }
       frame_summaries.push(pkt.into());
@@ -101,7 +100,7 @@ fn write_stats_file<T: Pixel>(ctx: &Context<T>, filename: &Path) -> Result<(), i
 
 fn do_encode<T: Pixel, D: Decoder>(
   cfg: Config, verbose: bool, mut progress: ProgressInfo,
-  mut err: std::io::StderrLock, mut output: &mut dyn Write,
+  mut err: std::io::StderrLock, output: &mut Muxer,
   source: &mut Source<D>,
   mut y4m_enc: Option<y4m::Encoder<'_, Box<dyn Write>>>
 ) {
@@ -109,7 +108,7 @@ fn do_encode<T: Pixel, D: Decoder>(
 
 
   while let Some(frame_info) =
-    process_frame(&mut ctx, &mut output, source, y4m_enc.as_mut())
+    process_frame(&mut ctx, &mut *output, source, y4m_enc.as_mut())
   {
     for frame in frame_info {
       progress.add_frame(frame);
@@ -173,8 +172,7 @@ fn main() {
     video_info.time_base.num
   );
 
-  write_ivf_header(
-    &mut cli.io.output,
+  cli.io.output.write_header(
     video_info.width,
     video_info.height,
     video_info.time_base.den as usize,
@@ -195,11 +193,23 @@ fn main() {
 
   if video_info.bit_depth == 8 {
     do_encode::<u8, y4m::Decoder<'_, Box<dyn Read>>>(
-      cfg, cli.verbose, progress, err, &mut cli.io.output, &mut source, y4m_enc
+      cfg,
+      cli.verbose,
+      progress,
+      err,
+      &mut *cli.io.output,
+      &mut source,
+      y4m_enc
     )
   } else {
     do_encode::<u16, y4m::Decoder<'_, Box<dyn Read>>>(
-      cfg, cli.verbose, progress, err, &mut cli.io.output, &mut source, y4m_enc
+      cfg,
+      cli.verbose,
+      progress,
+      err,
+      &mut *cli.io.output,
+      &mut source,
+      y4m_enc
     )
   }
 }
