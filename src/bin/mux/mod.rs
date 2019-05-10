@@ -13,6 +13,8 @@ pub use muxer::*;
 mod ivfmuxer;
 use ivfmuxer::IvfMuxer;
 
+mod y4mmuxer;
+pub use y4mmuxer::write_y4m_frame;
 pub fn create_muxer(path: &str) -> Box<dyn Muxer> {
   IvfMuxer::open(path)
 }
