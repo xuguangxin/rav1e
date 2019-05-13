@@ -100,40 +100,36 @@ https://arewecompressedyet.com/analyzer/?d=https://people.xiph.org/~mbebenita/an
 
 ## Coding style
 Check code formatting with [rustfmt](https://github.com/rust-lang-nursery/rustfmt) before submitting a PR.
-rav1e currently uses the nightly version of rustfmt.
+rav1e currently uses the stable version of rustfmt.
 
-To install nightly:
-
-```
-rustup install nightly
-```
-
-To install the nightly version of rustfmt:
+To install stable tool chain:
 
 ```
-rustup component add rustfmt-preview --toolchain nightly
+rustup install stable
+```
+
+To install the rustfmt:
+
+```
+rustup component add rustfmt
 ```
 
 then
 
 ```
-cargo +nightly fmt -- --check
+cargo fmt -- --check
 ```
 
 You should also try [clippy](https://github.com/rust-lang-nursery/rust-clippy).
-Rust also uses nightly for clippy.
 
 To install clippy:
 
 ```
-rustup component add clippy-preview --toolchain nightly
+rustup component add clippy
 ```
 
-then
+then you can refer travis script for detailed cargo clippy [command](https://github.com/xiph/rav1e/blob/master/.travis.yml)
 
-```
-cargo +nightly clippy
-```
 
 ## Testing
 Run unit tests with:
